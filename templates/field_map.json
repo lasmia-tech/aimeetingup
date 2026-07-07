@@ -1,0 +1,14 @@
+{
+  "scalar_fields": {
+    "project_name": "C3",
+    "project_phase": "E3",
+    "activity_name": "G3",
+    "meeting_date": "C4",
+    "meeting_location": "E4",
+    "organizer": "G4",
+    "attendees": "C5",
+    "meeting_title": "C6",
+    "discussion_summary": "C7",
+    "action_items_text": "C8"
+  }
+}

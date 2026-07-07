@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: aimeeting-minutes
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5
+      - key: CONFLUENCE_BASE_URL
+        sync: false
+      - key: CONFLUENCE_EMAIL
+        sync: false
+      - key: CONFLUENCE_API_TOKEN
+        sync: false
+      - key: CONFLUENCE_SPACE_KEY
+        sync: false
+      - key: CONFLUENCE_PARENT_PAGE_TITLE
+        value: "101.회의록"
+      - key: EXCEL_TEMPLATE_PATH
+        value: templates/회의록양식_샘플.xlsx
+      - key: EXCEL_FIELD_MAP_PATH
+        value: templates/field_map.json
