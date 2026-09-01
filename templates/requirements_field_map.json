@@ -1,0 +1,23 @@
+{
+  "table": {
+    "header_row": 2,
+    "start_row": 4,
+    "rows": 30,
+    "columns": {
+      "no": "A",
+      "req_id": "B",
+      "title": "C",
+      "description": "D",
+      "solution": "E",
+      "category_large": "F",
+      "category_medium": "G",
+      "category_small": "H",
+      "type": "I",
+      "requester": "J",
+      "source": "K",
+      "acceptance": "L",
+      "priority": "M",
+      "note": "N"
+    }
+  }
+}

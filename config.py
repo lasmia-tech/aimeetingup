@@ -50,13 +50,13 @@ class Settings:
         "CONFLUENCE_PARENT_PAGE_TITLE", "101.회의록"
     )  # 새 회의록 페이지를 하위 페이지로 붙일 부모 페이지 제목
 
-    # --- 엑셀 회의록 양식 ---
-    excel_template_path: str = os.getenv(
-        "EXCEL_TEMPLATE_PATH", "templates/meeting_minutes_template.xlsx"
-    )  # 회사 표준 회의록 양식(.xlsx) 파일 경로
-    excel_field_map_path: str = os.getenv(
-        "EXCEL_FIELD_MAP_PATH", "templates/field_map.json"
-    )  # 요약 필드 -> 엑셀 셀 주소 매핑 설정 파일 경로
+    # --- 요구사항정의서 엑셀 양식 ---
+    requirements_template_path: str = os.getenv(
+        "REQUIREMENTS_TEMPLATE_PATH", "templates/요구사항정의서_템플릿.xlsx"
+    )  # 요구사항정의서 양식(.xlsx) 파일 경로
+    requirements_field_map_path: str = os.getenv(
+        "REQUIREMENTS_FIELD_MAP_PATH", "templates/requirements_field_map.json"
+    )  # 요구사항 필드/표 위치 -> 엑셀 셀 주소 매핑 설정 파일 경로
 
 
 # 모듈을 import하는 시점에 한 번만 생성해서 앱 전체가 공유하는 싱글턴처럼 사용한다.

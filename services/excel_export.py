@@ -1,24 +1,27 @@
-"""Claude 요약 결과를 회사 표준 회의록 엑셀 양식에 채워 넣는 서비스.
+"""Claude 요약 결과 + 사용자 입력을 평탄화된 필드 dict로 합치는 서비스.
 
-실제 엑셀 양식(templates/회의록양식_샘플.xlsx)은 셀 병합이 많은 자유서식
-1페이지 문서라서, "필드명 -> 셀 주소" 매핑을 담은 templates/field_map.json을
-참고해 해당 셀에 문자열 값을 그대로 써 넣는 단순한 방식으로 동작한다.
-(반복되는 표/행 삽입 로직은 실제 양식에 필요 없어서 만들지 않았다.)
+이 fields dict는 컨플루언스 페이지 HTML 생성(services/confluence.py)의
+공통 입력으로 쓰인다.
 """
 
-import json
-from pathlib import Path
 
-import openpyxl
+def _format_meeting_datetime(meeting_date: str, start_time: str, end_time: str) -> str:
+    """날짜 + 시작/종료 시간을 회의일시 한 칸에 넣을 문자열로 합친다.
 
-
-def _load_field_map(field_map_path: str) -> dict:
-    """필드명 -> 셀 주소 매핑이 담긴 JSON 설정 파일을 읽어온다.
-
-    예: {"scalar_fields": {"project_name": "C3", "meeting_title": "C6", ...}}
+    엑셀 양식과 컨플루언스 표에는 "회의일시" 칸이 하나뿐이라 별도 열을 만들 수
+    없으므로, "2026-09-01 14:00~15:30" 형태로 이어 붙인다. 시간을 입력하지
+    않았으면 날짜만, 종료 시간만 비어 있으면 시작 시간까지만 표시한다.
     """
-    with open(field_map_path, encoding="utf-8") as f:
-        return json.load(f)
+    date_part = meeting_date.strip()
+    start, end = start_time.strip(), end_time.strip()
+
+    if start and end:
+        time_part = f"{start}~{end}"
+    else:
+        # 둘 중 하나만 있으면 있는 쪽만 쓴다(빈 물결표가 남지 않도록).
+        time_part = start or end
+
+    return " ".join(part for part in (date_part, time_part) if part)
 
 
 def build_excel_fields(
@@ -28,6 +31,8 @@ def build_excel_fields(
     activity_name: str,
     meeting_location: str,
     organizer: str,
+    meeting_start_time: str = "",
+    meeting_end_time: str = "",
 ) -> dict:
     """Claude 요약(summary) + 사용자가 직접 입력한 프로젝트 정보를 하나로
     합쳐서, 엑셀 양식과 컨플루언스 페이지가 공통으로 쓰는 "평탄화된" 필드
@@ -41,12 +46,18 @@ def build_excel_fields(
         activity_name: 활동명 (예: "요구사항 수집").
         meeting_location: 회의장소.
         organizer: 주관사.
+        meeting_start_time: 회의 시작 시간 ("HH:MM", 없으면 빈 문자열).
+        meeting_end_time: 회의 종료 시간 ("HH:MM", 없으면 빈 문자열).
 
     Returns:
         엑셀 셀/컨플루언스 HTML 표에 그대로 넣을 수 있는, 모든 값이 문자열인
         평탄화된 dict. (project_name, project_phase, activity_name,
-        meeting_date, meeting_location, organizer, attendees, meeting_title,
-        discussion_summary, action_items_text)
+        meeting_date, meeting_date_only, meeting_location, organizer, attendees,
+        meeting_title, discussion_summary, action_items_text)
+
+        meeting_date는 시간까지 합친 표시용 문자열이고, meeting_date_only는
+        날짜만 담은 값이다(컨플루언스 페이지 제목처럼 시간이 들어가면 곤란한
+        곳에서 쓴다).
     """
     # 회사 양식에는 "회의내용" 칸 하나만 있고 안건/논의내용/결정사항이 따로
     # 나뉘어 있지 않으므로, 세 항목을 [안건]/[논의 내용]/[결정 사항] 소제목을
@@ -73,7 +84,13 @@ def build_excel_fields(
         "project_name": project_name,
         "project_phase": project_phase,
         "activity_name": activity_name,
-        "meeting_date": summary.get("meeting_date", ""),
+        "meeting_date": _format_meeting_datetime(
+            summary.get("meeting_date", ""),
+            meeting_start_time,
+            meeting_end_time,
+        ),
+        # 페이지 제목("일시_회의명")에는 시간을 넣지 않으므로 날짜만 따로 남겨둔다.
+        "meeting_date_only": summary.get("meeting_date", ""),
         "meeting_location": meeting_location,
         "organizer": organizer,
         # attendees는 리스트이므로 엑셀/컨플루언스에 넣기 위해 콤마로 이어 붙인다.
@@ -82,29 +99,3 @@ def build_excel_fields(
         "discussion_summary": "\n\n".join(content_parts),
         "action_items_text": action_items_text,
     }
-
-
-def fill_template(fields: dict, template_path: str, field_map_path: str, output_path: str) -> str:
-    """평탄화된 필드 값들을 실제 엑셀 양식 파일의 지정된 셀에 채워 넣는다.
-
-    Args:
-        fields: build_excel_fields()가 만든 평탄화된 필드 dict.
-        template_path: 원본 회의록 양식(.xlsx) 파일 경로 (읽기 전용으로 사용).
-        field_map_path: "필드명 -> 셀 주소" 매핑이 담긴 JSON 설정 파일 경로.
-        output_path: 값이 채워진 결과 파일을 저장할 경로.
-
-    Returns:
-        저장된 결과 파일의 경로(output_path와 동일한 값).
-    """
-    field_map = _load_field_map(field_map_path)
-    wb = openpyxl.load_workbook(template_path)
-    ws = wb.active  # 회의록 양식은 시트가 1개뿐이라 활성 시트만 사용
-
-    # 매핑에 정의된 필드만 해당 셀에 덮어쓴다. 매핑에 없는 fields의 키는 무시된다.
-    for field, cell in field_map.get("scalar_fields", {}).items():
-        ws[cell] = fields.get(field, "")
-
-    # output/ 폴더가 아직 없을 수 있으므로 미리 생성해둔다.
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    wb.save(output_path)
-    return output_path
